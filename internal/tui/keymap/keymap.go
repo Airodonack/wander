@@ -20,7 +20,7 @@ type keyMap struct {
 	PrevFilteredRow key.Binding
 	Forward         key.Binding
 	Reload          key.Binding
-	Stats           key.Binding
+	Info            key.Binding
 	StdOut          key.Binding
 	StdErr          key.Binding
 	Spec            key.Binding
@@ -91,9 +91,9 @@ var KeyMap = keyMap{
 		key.WithKeys("r"),
 		key.WithHelp("r", "reload"),
 	),
-	Stats: key.NewBinding(
-		key.WithKeys("s"),
-		key.WithHelp("s", "stats"),
+	Info: key.NewBinding(
+		key.WithKeys("i"),
+		key.WithHelp("i", "info"),
 	),
 	StdOut: key.NewBinding(
 		key.WithKeys("o"),
@@ -115,13 +115,12 @@ var KeyMap = keyMap{
 		key.WithKeys("X"),
 		key.WithHelp("X", "admin"),
 	),
-	// s is taken by Stats on the task views, so sorting uses S and D on every view
 	Sort: key.NewBinding(
-		key.WithKeys("S"),
-		key.WithHelp("S", "sort"),
+		key.WithKeys("s"),
+		key.WithHelp("s", "sort"),
 	),
 	SortDirection: key.NewBinding(
-		key.WithKeys("D"),
-		key.WithHelp("D", "sort rev"),
+		key.WithKeys("S"),
+		key.WithHelp("S", "sort rev"),
 	),
 }

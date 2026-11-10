@@ -534,7 +534,7 @@ func (m *Model) handleKeyMsg(msg tea.KeyMsg) tea.Cmd {
 			}
 		}
 
-		if key.Matches(msg, keymap.KeyMap.Stats) {
+		if key.Matches(msg, keymap.KeyMap.Info) {
 			if selectedPageRow, err := m.getCurrentPageModel().GetSelectedPageRow(); err == nil {
 				if m.currentPage.ShowsTasks() {
 					taskInfo, err := nomad.TaskInfoFromKey(selectedPageRow.Key)

@@ -191,12 +191,12 @@ func (s *sortState) setColumns(columns []string) {
 	s.columns = columns
 }
 
+// cycle moves the sort to the next column, keeping its direction
 func (s *sortState) cycle() {
 	s.column++
 	if s.column >= len(s.columns) {
 		s.column = -1
 	}
-	s.descending = false
 }
 
 // flip reverses the sort of a column; the natural order has no direction

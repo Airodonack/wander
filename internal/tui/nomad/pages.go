@@ -283,7 +283,7 @@ func (p Page) String() string {
 	case LoglinePage:
 		return "log"
 	case StatsPage:
-		return "stats"
+		return "info"
 	case AllocAdminPage:
 		return "task admin menu"
 	case JobAdminPage:
@@ -427,7 +427,7 @@ func (p Page) GetFilterPrefix(namespace, jobID, taskName, allocName, allocID str
 	case LoglinePage:
 		return fmt.Sprintf("Log Line for Task %s", taskFilterPrefix(taskName, allocName))
 	case StatsPage:
-		return fmt.Sprintf("Stats for Allocation %s", allocName)
+		return fmt.Sprintf("Info for Allocation %s", allocName)
 	case AllocAdminPage:
 		return fmt.Sprintf("Admin Actions for Allocation %s %s", style.Bold.Render(allocName), formatter.ShortAllocID(allocID))
 	case AllocAdminConfirmPage:
@@ -569,7 +569,7 @@ func GetPageKeyHelp(
 
 	if currentPage.ShowsTasks() {
 		fourthRow = append(fourthRow, keymap.KeyMap.AllocEvents)
-		fourthRow = append(fourthRow, keymap.KeyMap.Stats)
+		fourthRow = append(fourthRow, keymap.KeyMap.Info)
 		fourthRow = append(fourthRow, keymap.KeyMap.Exec)
 	}
 

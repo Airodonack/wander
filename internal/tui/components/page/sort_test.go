@@ -163,10 +163,15 @@ func TestSortStateCycleAndFlip(t *testing.T) {
 	if s.column != 0 || !s.descending {
 		t.Errorf("after refresh = %+v", s)
 	}
-	// moving to the next column starts ascending
+	// moving to the next column keeps the direction, through the natural order too
 	s.cycle()
-	if s.column != 1 || s.descending {
+	if s.column != 1 || !s.descending {
 		t.Errorf("after cycle = %+v", s)
+	}
+	s.cycle()
+	s.cycle()
+	if s.column != 0 || !s.descending {
+		t.Errorf("after cycling round = %+v", s)
 	}
 	// different columns reset it
 	s.setColumns([]string{"Key", "Value"})
@@ -200,11 +205,11 @@ func TestHeaderArrow(t *testing.T) {
 		t.Errorf("Count descending = %q, want %q", got, want)
 	}
 	s.cycle()
-	if got, want := s.withArrow(header), []string{"Job      " + sep + "Count  " + sep + "Since Submit ↑" + sep}; !reflect.DeepEqual(got, want) {
-		t.Errorf("last column ascending = %q, want %q", got, want)
+	if got, want := s.withArrow(header), []string{"Job      " + sep + "Count  " + sep + "Since Submit ↓" + sep}; !reflect.DeepEqual(got, want) {
+		t.Errorf("last column keeps descending = %q, want %q", got, want)
 	}
 	// without room the cell grows by the arrow
-	if got, want := s.withArrow([]string{"Job" + sep + "Count" + sep + "Since Submit" + sep}), []string{"Job" + sep + "Count" + sep + "Since Submit ↑" + sep}; !reflect.DeepEqual(got, want) {
+	if got, want := s.withArrow([]string{"Job" + sep + "Count" + sep + "Since Submit" + sep}), []string{"Job" + sep + "Count" + sep + "Since Submit ↓" + sep}; !reflect.DeepEqual(got, want) {
 		t.Errorf("no room = %q, want %q", got, want)
 	}
 	// headers that aren't the table's are left alone
@@ -268,7 +273,8 @@ func checkHeaderArrowOnPage(t *testing.T) {
 		}
 		naturalStatusAt := cellIndex(natural[0], "Status")
 		for _, step := range []struct{ press, want string }{
-			{"S", "Job ↑"}, {"D", "Job ↓"}, {"S", "Count ↑"}, {"D", "Count ↓"}, {"S", "Status ↑"}, {"D", "Status ↓"},
+			// the next column keeps the direction
+			{"s", "Job ↑"}, {"S", "Job ↓"}, {"s", "Count ↓"}, {"S", "Count ↑"}, {"s", "Status ↑"}, {"S", "Status ↓"},
 		} {
 			m, _ = m.Update(keyPress(step.press))
 			lines := tableLines(m)
@@ -286,7 +292,7 @@ func checkHeaderArrowOnPage(t *testing.T) {
 				t.Errorf("%s: Status moved from cell %d to %d", step.want, naturalStatusAt, statusAt)
 			}
 		}
-		m, _ = m.Update(keyPress("S"))
+		m, _ = m.Update(keyPress("s"))
 		if got := tableLines(m); !reflect.DeepEqual(got, natural) {
 			t.Errorf("compact %v: back in natural order\n%s\nwant\n%s", compact, strings.Join(got, "\n"), strings.Join(natural, "\n"))
 		}
@@ -336,8 +342,8 @@ func selectedKey(t *testing.T, m Model) string {
 // a refresh can change a sorted column's values and so the order; the cursor stays on its row
 func TestRefreshKeepsCursorOnRowWhenSorted(t *testing.T) {
 	m := newSortedPage(false, statusRows("pending", "pending", "pending", "pending"))
-	m, _ = m.Update(keyPress("S"))
-	m, _ = m.Update(keyPress("S")) // sort: Status asc
+	m, _ = m.Update(keyPress("s"))
+	m, _ = m.Update(keyPress("s")) // sort: Status asc
 	m, _ = m.Update(keyPress("j")) // cursor on b
 	if got := selectedKey(t, m); got != "b" {
 		t.Fatalf("setup: selected %q", got)
@@ -384,9 +390,9 @@ func TestContextFilterAfterSort(t *testing.T) {
 		m, _ = m.Update(keyPress(k))
 	}
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m, _ = m.Update(keyPress("S"))
-	m, _ = m.Update(keyPress("S")) // Status asc: a c e (x) b d (y)
-	m, _ = m.Update(keyPress("D")) // Status desc: b d a c e
+	m, _ = m.Update(keyPress("s"))
+	m, _ = m.Update(keyPress("s")) // Status asc: a c e (x) b d (y)
+	m, _ = m.Update(keyPress("S")) // Status desc: b d a c e
 	if got := keysOf(m.pageData.FilteredRows); !reflect.DeepEqual(got, []string{"b", "d", "a", "c", "e"}) {
 		t.Fatalf("order %v", got)
 	}
@@ -399,7 +405,7 @@ func TestContextFilterAfterSort(t *testing.T) {
 	}
 }
 
-// with a plain filter applied, S keeps the cursor on its row
+// with a plain filter applied, sorting keeps the cursor on its row
 func TestPlainFilterAfterSort(t *testing.T) {
 	m := newSortedPage(false, statusRows("x", "y", "x", "y", "x"))
 	for _, k := range []string{"/", "x"} {
@@ -407,8 +413,8 @@ func TestPlainFilterAfterSort(t *testing.T) {
 	}
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m, _ = m.Update(keyPress("j"))
+	m, _ = m.Update(keyPress("s"))
 	m, _ = m.Update(keyPress("S"))
-	m, _ = m.Update(keyPress("D"))
 	if got := selectedKey(t, m); got != "c" {
 		t.Errorf("cursor on %q, want c", got)
 	}
@@ -417,18 +423,18 @@ func TestPlainFilterAfterSort(t *testing.T) {
 	}
 }
 
-// S and D typed into the filter stay text
-func TestSDTypeableInFilter(t *testing.T) {
+// s and S typed into the filter stay text
+func TestSortKeysTypeableInFilter(t *testing.T) {
 	m := newSortedPage(false, statusRows("x", "y"))
-	for _, k := range []string{"/", "S", "D"} {
+	for _, k := range []string{"/", "s", "S"} {
 		m, _ = m.Update(keyPress(k))
 	}
-	if m.filter.Value() != "SD" || m.sort.column != -1 {
+	if m.filter.Value() != "sS" || m.sort.column != -1 {
 		t.Errorf("filter %q sort %+v", m.filter.Value(), m.sort)
 	}
 }
 
-// app.go's "No results" message rows have no sort values, so S does nothing and no arrow shows
+// app.go's "No results" message rows have no sort values, so s does nothing and no arrow shows
 func TestMessageRowsDoNotSort(t *testing.T) {
 	m := New(Config{Width: 100, Height: 30, SelectionEnabled: true}, false, false, false)
 	m.SetHeader([]string{"Job"})
@@ -438,7 +444,7 @@ func TestMessageRowsDoNotSort(t *testing.T) {
 	m.SetHeader([]string{"Error"})
 	m.SetAllPageRows([]Row{{Row: "No results. Is the cluster empty or was no nomad token provided?"}, {Row: "Press q or ctrl+c to quit."}})
 	m.SetViewportSelectionEnabled(false)
-	m, _ = m.Update(keyPress("S"))
+	m, _ = m.Update(keyPress("s"))
 	if m.sort.column != -1 {
 		t.Errorf("error page sorts by column %d", m.sort.column)
 	}
@@ -450,7 +456,7 @@ func TestMessageRowsDoNotSort(t *testing.T) {
 // a sort that was on when the rows became message rows shows no arrow
 func TestMessageRowsHideSort(t *testing.T) {
 	m := newSortedPage(false, statusRows("x", "y"))
-	m, _ = m.Update(keyPress("S"))
+	m, _ = m.Update(keyPress("s"))
 	m.SetAllPageRows([]Row{{Row: "No results. Is the cluster empty or was no nomad token provided?"}})
 	if m.sortable() {
 		t.Errorf("message rows are sortable")
@@ -481,8 +487,8 @@ func TestRefreshKeepsCursorByRowID(t *testing.T) {
 		return rows
 	}
 	m := newSortedPage(false, withKeys("-v1", "pending", "pending", "pending"))
-	m, _ = m.Update(keyPress("S"))
-	m, _ = m.Update(keyPress("S"))
+	m, _ = m.Update(keyPress("s"))
+	m, _ = m.Update(keyPress("s"))
 	m, _ = m.Update(keyPress("j"))
 	m.SetAllPageRows(withKeys("-v2", "running", "pending", "pending"))
 	if got := selectedKey(t, m); got != "b-v2" {
@@ -497,8 +503,8 @@ func TestRefreshKeepsContextFilterMatch(t *testing.T) {
 		m, _ = m.Update(keyPress(k))
 	}
 	m, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
-	m, _ = m.Update(keyPress("S"))
-	m, _ = m.Update(keyPress("S")) // Status asc: a c (x) b d (y), cursor on a, match 1/2
+	m, _ = m.Update(keyPress("s"))
+	m, _ = m.Update(keyPress("s")) // Status asc: a c (x) b d (y), cursor on a, match 1/2
 	m, _ = m.Update(keyPress("n")) // cursor on c, match 2/2
 	// d becomes "w" and moves to the top, moving c down one
 	m.SetAllPageRows(statusRows("x", "y", "x", "w"))
